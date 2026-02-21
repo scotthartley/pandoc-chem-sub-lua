@@ -155,8 +155,19 @@ local function parse_formula_body(s)
             i = j + 1
 
         elseif c == '(' then
-            -- Look for the closing ')'; check for special sub-cases.
-            local close_paren = s:find("%)", i + 1)
+            -- Find the matching ')' with depth tracking (mirrors the '[' case).
+            local depth_p = 1
+            local j = i + 1
+            while j <= #s do
+                local cc = s:sub(j, j)
+                if     cc == '(' then depth_p = depth_p + 1
+                elseif cc == ')' then
+                    depth_p = depth_p - 1
+                    if depth_p == 0 then break end
+                end
+                j = j + 1
+            end
+            local close_paren = (depth_p == 0) and j or nil
             if close_paren then
                 local inner = s:sub(i + 1, close_paren - 1)
 
@@ -238,6 +249,7 @@ local function format_species(s)
     local inlines = pandoc.List()
 
     -- Leading coefficient: digits with optional decimal/fraction  e.g. 2, 1/2, 2.5
+    -- Second capture starts at the first element symbol, bracket, or modifier (^, _, ().
     local coeff, rest = s:match("^(%d+[%.%/]?%d*)([%a%[%^%_%(].*)")
     if not coeff then
         -- Entire string is a bare number (rare but handle it)
@@ -484,8 +496,8 @@ end
 local function process_str(str_elem, sub_dict)
     local s = str_elem.text
 
-    -- Quick exit: neither pattern marker present
-    if not s:find("s:%{") and not s:find("%{") then
+    -- Quick exit: no brace present → no chem or substitution pattern possible
+    if not s:find("%{") then
         return nil
     end
 
