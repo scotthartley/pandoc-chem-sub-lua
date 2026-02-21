@@ -56,6 +56,8 @@ local function parse_group_content(s)
         local c = s:sub(i, i)
         if c == '-' then
             inlines:insert(pandoc.Str(MINUS_SIGN))
+        elseif c == '.' then
+            inlines:insert(pandoc.Str("\xc2\xb7"))  -- U+00B7 MIDDLE DOT (radical dot)
         else
             inlines:insert(pandoc.Str(c))
         end
@@ -205,6 +207,19 @@ local function parse_formula_body(s)
             -- Trailing charge '-'; normalise to U+2212
             inlines:insert(pandoc.Superscript({ pandoc.Str(MINUS_SIGN) }))
             i = i + 1
+
+        elseif c == '.' then
+            -- Centre dot (mhchem hydrate / bond notation): U+00B7 ·
+            -- Digits that immediately follow are a stoichiometric coefficient,
+            -- not subscripts, so consume and emit them as plain text.
+            inlines:insert(pandoc.Str("\xc2\xb7"))  -- U+00B7 MIDDLE DOT
+            local coeff = s:match("^(%d+)", i + 1)
+            if coeff then
+                inlines:insert(pandoc.Str(coeff))
+                i = i + 1 + #coeff
+            else
+                i = i + 1
+            end
 
         else
             -- Regular character

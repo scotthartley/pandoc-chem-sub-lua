@@ -106,6 +106,26 @@ Recognised labels: `aq`, `aq,sat`, `s`, `l`, `g`, `cr`, `am`, `vit`.
 | `s:{NH3^}` | NH₃↑ |
 | `s:{NH3(^)}` | NH₃↑ |
 
+### Centre dots and hydrates
+
+A `.` is rendered as a middle dot (·, U+00B7). Digits that immediately follow
+are treated as a stoichiometric coefficient (plain text, not subscripted):
+
+| Source | Rendered |
+|---|---|
+| `s:{CuSO4.5H2O}` | CuSO₄·5H₂O |
+| `s:{KCr(SO4)2.12H2O}` | KCr(SO₄)₂·12H₂O |
+
+### Radical dots
+
+A `.` inside an explicit `^{...}` group is rendered as a middle dot (·, U+00B7):
+
+| Source | Rendered |
+|---|---|
+| `s:{CH3^{.}}` | CH₃<sup>·</sup> |
+| `s:{^{.}OH}` | <sup>·</sup>OH |
+| `s:{NO^{(2.)-}}` | NO<sup>(2·)⁻</sup> |
+
 ### Complex species
 
 Square brackets and nested parentheses are handled recursively:
