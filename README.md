@@ -64,7 +64,7 @@ Explicit groups with `^{...}` and `_{...}` are also supported:
 |---|---|
 | `[SO4^{2-}]{.chem}` | SO₄²⁻ |
 | `[\^{14}_{6}C]{.chem}` | ¹⁴₆C |
-| `[Fe^{III}]{.chem}` | Fe^(III) |
+| `[Fe^{III}]{.chem}` | Fe<sup>III</sup> |
 
 ### Reaction equations
 
