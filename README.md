@@ -207,6 +207,14 @@ React s:{H2O} with s:{SO4^2-} to get {water}.
 
 ---
 
+## Related filters
+
+[pandoc-eqref.lua](https://github.com/scotthartley/pandoc-eqref-lua) can be
+used alongside this filter to add numbered equation references to chemical
+equations.
+
+---
+
 ## Acknowledgments
 
 This filter was written by [Claude Code](https://claude.ai/claude-code),
