@@ -3,7 +3,7 @@
 A [Pandoc](https://pandoc.org) Lua filter that handles two related tasks in a
 single pass:
 
-1. **Chemical formula formatting** — `s:{formula}` syntax renders subscripts,
+1. **Chemical formula formatting** — `[formula]{.chem}` span syntax renders subscripts,
    superscripts, reaction arrows, charges, and states of aggregation.
 2. **Compound name substitution** — `{key}` placeholders are replaced with
    inline content defined in document metadata.
@@ -13,6 +13,9 @@ For LaTeX and Beamer output the filter delegates chemical rendering to the
 fidelity is preserved in PDF output. For all other formats (HTML, DOCX, EPUB,
 …) the filter renders formulas directly as pandoc inline elements using
 Unicode characters.
+
+Without the filter the formula text is visible in the output as-is, providing
+a readable plain-text fallback.
 
 ---
 
@@ -39,10 +42,10 @@ pandoc --lua-filter pandoc-chem-sub.lua input.md -o output.pdf
 
 ---
 
-## Chemical formulas: `s:{...}`
+## Chemical formulas: `[...]{.chem}`
 
-Write `s:{formula}` anywhere in inline text. The filter recognises mhchem-style
-formula notation inside the braces.
+Write `[formula]{.chem}` anywhere in inline text using standard Pandoc span
+syntax. The filter recognises mhchem-style formula notation inside the span.
 
 ### Subscripts and superscripts
 
@@ -50,29 +53,29 @@ Digits are automatically subscripted. Charges use `^`:
 
 | Source | Rendered |
 |---|---|
-| `s:{CH3OH}` | CH₃OH |
-| `s:{SO4^2-}` | SO₄²⁻ |
-| `s:{Na+}` | Na⁺ |
-| `s:{CH3O-}` | CH₃O⁻ |
+| `[CH3OH]{.chem}` | CH₃OH |
+| `[SO4^2-]{.chem}` | SO₄²⁻ |
+| `[Na+]{.chem}` | Na⁺ |
+| `[CH3O-]{.chem}` | CH₃O⁻ |
 
 Explicit groups with `^{...}` and `_{...}` are also supported:
 
 | Source | Rendered |
 |---|---|
-| `s:{SO4^{2-}}` | SO₄²⁻ |
-| `s:{^{14}_{6}C}` | ¹⁴₆C |
-| `s:{Fe^{III}}` | Fe^(III) |
+| `[SO4^{2-}]{.chem}` | SO₄²⁻ |
+| `[\^{14}_{6}C]{.chem}` | ¹⁴₆C |
+| `[Fe^{III}]{.chem}` | Fe^(III) |
 
 ### Reaction equations
 
 Reaction arrows and the `+` operator between species are recognised. Spaces
-inside `s:{...}` are allowed, making source text easier to read:
+inside the span are allowed, making source text easier to read:
 
 | Source | Rendered |
 |---|---|
-| `s:{H2 + Cl2 -> 2 HCl}` | H₂ + Cl₂ → 2 HCl |
-| `s:{H2O <=> H+ + OH-}` | H₂O ⇌ H⁺ + OH⁻ |
-| `s:{A -> B <- C}` | A → B ← C |
+| `[H2 + Cl2 -> 2 HCl]{.chem}` | H₂ + Cl₂ → 2 HCl |
+| `[H2O <=> H+ + OH-]{.chem}` | H₂O ⇌ H⁺ + OH⁻ |
+| `[A -> B <- C]{.chem}` | A → B ← C |
 
 Supported arrow tokens (mhchem notation):
 
@@ -92,9 +95,9 @@ Write the state label inside parentheses immediately after the formula:
 
 | Source | Rendered |
 |---|---|
-| `s:{NaCl(s)}` | NaCl(s) |
-| `s:{HCl(g)}` | HCl(g) |
-| `s:{CrO4^2-(aq)}` | CrO₄²⁻(aq) |
+| `[NaCl(s)]{.chem}` | NaCl(s) |
+| `[HCl(g)]{.chem}` | HCl(g) |
+| `[CrO4^2-(aq)]{.chem}` | CrO₄²⁻(aq) |
 
 Recognised labels: `aq`, `aq,sat`, `s`, `l`, `g`, `cr`, `am`, `vit`.
 
@@ -102,9 +105,9 @@ Recognised labels: `aq`, `aq,sat`, `s`, `l`, `g`, `cr`, `am`, `vit`.
 
 | Source | Rendered |
 |---|---|
-| `s:{BaSO4(v)}` | BaSO₄↓ |
-| `s:{NH3^}` | NH₃↑ |
-| `s:{NH3(^)}` | NH₃↑ |
+| `[BaSO4(v)]{.chem}` | BaSO₄↓ |
+| `[NH3^]{.chem}` | NH₃↑ |
+| `[NH3(^)]{.chem}` | NH₃↑ |
 
 ### Centre dots and hydrates
 
@@ -113,8 +116,8 @@ are treated as a stoichiometric coefficient (plain text, not subscripted):
 
 | Source | Rendered |
 |---|---|
-| `s:{CuSO4.5H2O}` | CuSO₄·5H₂O |
-| `s:{KCr(SO4)2.12H2O}` | KCr(SO₄)₂·12H₂O |
+| `[CuSO4.5H2O]{.chem}` | CuSO₄·5H₂O |
+| `[KCr(SO4)2.12H2O]{.chem}` | KCr(SO₄)₂·12H₂O |
 
 ### Radical dots
 
@@ -122,9 +125,9 @@ A `.` inside an explicit `^{...}` group is rendered as a middle dot (·, U+00B7)
 
 | Source | Rendered |
 |---|---|
-| `s:{CH3^{.}}` | CH₃<sup>·</sup> |
-| `s:{^{.}OH}` | <sup>·</sup>OH |
-| `s:{NO^{(2.)-}}` | NO<sup>(2·)⁻</sup> |
+| `[CH3^{.}]{.chem}` | CH₃<sup>·</sup> |
+| `[\^{.}OH]{.chem}` | <sup>·</sup>OH |
+| `[NO^{(2.)-}]{.chem}` | NO<sup>(2·)⁻</sup> |
 
 ### Complex species
 
@@ -132,8 +135,8 @@ Square brackets and nested parentheses are handled recursively:
 
 | Source | Rendered |
 |---|---|
-| `s:{[AgCl2]-}` | [AgCl₂]⁻ |
-| `s:{KCr(SO4)2}` | KCr(SO₄)₂ |
+| `[[AgCl2]-]{.chem}` | [AgCl₂]⁻ |
+| `[KCr(SO4)2]{.chem}` | KCr(SO₄)₂ |
 
 ---
 
@@ -182,7 +185,7 @@ Spaced reaction syntax is preserved as-is inside `\ce{}`, which is what
 mhchem expects:
 
 ```
-s:{H2 + Cl2 -> 2 HCl}  →  \ce{H2 + Cl2 -> 2 HCl}
+[H2 + Cl2 -> 2 HCl]{.chem}  →  \ce{H2 + Cl2 -> 2 HCl}
 ```
 
 ---
@@ -192,18 +195,18 @@ s:{H2 + Cl2 -> 2 HCl}  →  \ce{H2 + Cl2 -> 2 HCl}
 Both features work together on the same line:
 
 ```markdown
-React s:{H2O} with s:{SO4^2-} to get {water}.
+React [H2O]{.chem} with [SO4^2-]{.chem} to get {water}.
 ```
 
 ---
 
 ## Limitations
 
-- `_{...}` subscript notation inside a spaced `s:{...}` expression (e.g.
-  `s:{^{14}_{6}C + ...}`) is not supported in Markdown source because
-  Pandoc's parser treats `_` as an emphasis delimiter before the filter
-  runs. Use the compact form `s:{^{14}_{6}C}` (no spaces) for formulas
-  containing explicit subscript groups.
+- Formulas whose first character is `^` and that contain no spaces must
+  escape the leading caret as `\^`. Pandoc interprets `[^...]` without spaces
+  as a footnote reference before the filter runs. Write `[\^{14}_{6}C]{.chem}`
+  rather than `[^{14}_{6}C]{.chem}`. Formulas starting with `^` that contain
+  spaces (such as reaction equations) are unaffected.
 
 ---
 
