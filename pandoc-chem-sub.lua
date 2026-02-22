@@ -1,5 +1,5 @@
 -- Pandoc Lua filter combining chemical structure formatting and compound name substitution.
--- Chemical structures specified as s:{formula} are converted to subscript/superscript
+-- Chemical structures specified as [formula]{.chem} are converted to subscript/superscript
 -- inline elements (e.g. CH3OH, SO4^2-). For LaTeX/beamer output, \ce{} from the
 -- mhchem package is emitted instead.
 -- Substitution placeholders {name} are replaced with inline elements from the
@@ -10,13 +10,13 @@ local MINUS_SIGN = "\xe2\x88\x92"
 
 -- Arrow tokens: checked longest-first to avoid prefix shadowing.
 local ARROWS = {
-    { mhchem = "<=>>", unicode = "\xe2\x87\x92" },   -- U+21D2 ⇒
-    { mhchem = "<<=>", unicode = "\xe2\x87\x90" },   -- U+21D0 ⇐
-    { mhchem = "<-->", unicode = "\xe2\x9f\xb7" },   -- U+27F7 ⟷
-    { mhchem = "<=>",  unicode = "\xe2\x87\x8c" },   -- U+21CC ⇌
-    { mhchem = "<->",  unicode = "\xe2\x86\x94" },   -- U+2194 ↔
-    { mhchem = "->",   unicode = "\xe2\x86\x92" },   -- U+2192 →
-    { mhchem = "<-",   unicode = "\xe2\x86\x90" },   -- U+2190 ←
+    { mhchem = "<=>>" , unicode = "\xe2\x87\x92" },   -- U+21D2 ⇒
+    { mhchem = "<<=>",  unicode = "\xe2\x87\x90" },   -- U+21D0 ⇐
+    { mhchem = "<-->",  unicode = "\xe2\x9f\xb7" },   -- U+27F7 ⟷
+    { mhchem = "<=>",   unicode = "\xe2\x87\x8c" },   -- U+21CC ⇌
+    { mhchem = "<->",   unicode = "\xe2\x86\x94" },   -- U+2194 ↔
+    { mhchem = "->",    unicode = "\xe2\x86\x92" },   -- U+2192 →
+    { mhchem = "<-",    unicode = "\xe2\x86\x90" },   -- U+2190 ←
 }
 
 -- States of aggregation recognised inside parentheses.
@@ -357,194 +357,6 @@ local function format_ce(content)
 end
 
 -- ---------------------------------------------------------------------------
--- split_string(s)
--- Walk left-to-right, returning typed segments:
---   {type="chem", content=formula}  for s:{...} (nested braces allowed)
---   {type="sub",  content=name}     for {name}
---   {type="text", content=text}     for literal text
--- ---------------------------------------------------------------------------
-local function split_string(s)
-    local segments = {}
-    local pos = 1
-
-    while pos <= #s do
-        -- Locate next candidate chem pattern "s:{"
-        local chem_marker = s:find("s:%{", pos)
-
-        -- Locate next substitution pattern "{name}" (name has no whitespace/braces)
-        local sub_start, sub_end, sub_name = s:find("%{([^%s%}]+)%}", pos)
-
-        -- Validate chem pattern with brace-aware closing search
-        local chem_start, chem_end, chem_formula
-        if chem_marker then
-            local brace_open  = chem_marker + 2  -- position of '{'
-            local brace_close = find_closing_brace(s, brace_open)
-            if brace_close then
-                chem_start   = chem_marker
-                chem_end     = brace_close
-                chem_formula = s:sub(brace_open + 1, brace_close - 1)
-            end
-            -- If unmatched, chem_start remains nil
-        end
-
-        if not chem_start and not sub_start then
-            table.insert(segments, { type = "text", content = s:sub(pos) })
-            break
-        end
-
-        local next_start, next_end, seg_type, seg_content
-
-        -- Pick whichever starts first; chem wins on a tie
-        if chem_start and (not sub_start or chem_start <= sub_start) then
-            next_start, next_end = chem_start, chem_end
-            seg_type    = "chem"
-            seg_content = chem_formula
-        else
-            next_start, next_end = sub_start, sub_end
-            seg_type    = "sub"
-            seg_content = sub_name
-        end
-
-        -- Emit literal text that precedes the match
-        if next_start > pos then
-            table.insert(segments, { type = "text", content = s:sub(pos, next_start - 1) })
-        end
-
-        table.insert(segments, { type = seg_type, content = seg_content })
-        pos = next_end + 1
-    end
-
-    return segments
-end
-
--- ---------------------------------------------------------------------------
--- stitch_inlines(ils)
--- Scans an Inlines list for Str elements containing an unclosed s:{.
--- Collects subsequent Str/Space/SoftBreak elements until the opening brace
--- is matched, then replaces the run with a single synthesised Str.
--- Returns the modified list, or nil if no stitching was needed.
--- ---------------------------------------------------------------------------
-local function stitch_inlines(ils)
-    local result = pandoc.List()
-    local i = 1
-    local modified = false
-
-    while i <= #ils do
-        local el = ils[i]
-
-        if el.tag == "Str" then
-            local s = el.text
-            local marker_pos = s:find("s:%{")
-
-            if marker_pos then
-                local brace_pos = marker_pos + 2   -- position of '{' in s
-                local close = find_closing_brace(s, brace_pos)
-
-                if close then
-                    -- Fully contained — no stitching needed
-                    result:insert(el)
-                    i = i + 1
-                else
-                    -- Opening brace unclosed; collect subsequent tokens
-                    local combined = s
-                    local j = i + 1
-                    local done = false
-
-                    while j <= #ils do
-                        local nx = ils[j]
-                        if     nx.tag == "Str"       then combined = combined .. nx.text
-                        elseif nx.tag == "Space"     then combined = combined .. " "
-                        elseif nx.tag == "SoftBreak" then combined = combined .. " "
-                        else break
-                        end
-
-                        if find_closing_brace(combined, brace_pos) then
-                            done = true
-                            break
-                        end
-                        j = j + 1
-                    end
-
-                    if done then
-                        result:insert(pandoc.Str(combined))
-                        modified = true
-                        i = j + 1
-                    else
-                        -- Unmatched brace; emit original token unchanged
-                        result:insert(el)
-                        i = i + 1
-                    end
-                end
-            else
-                result:insert(el)
-                i = i + 1
-            end
-        else
-            result:insert(el)
-            i = i + 1
-        end
-    end
-
-    return modified and result or nil
-end
-
--- ---------------------------------------------------------------------------
--- process_str(str_elem, sub_dict)
--- Expand chem and substitution patterns within a Str element.
--- Returns a pandoc.List of Inlines, or nil if no patterns are present.
--- ---------------------------------------------------------------------------
-local function process_str(str_elem, sub_dict)
-    local s = str_elem.text
-
-    -- Quick exit: no brace present → no chem or substitution pattern possible
-    if not s:find("%{") then
-        return nil
-    end
-
-    local segments = split_string(s)
-
-    -- If nothing matched, leave the string alone
-    local has_pattern = false
-    for _, seg in ipairs(segments) do
-        if seg.type == "chem" or seg.type == "sub" then
-            has_pattern = true
-            break
-        end
-    end
-    if not has_pattern then return nil end
-
-    local result = pandoc.List()
-
-    for _, seg in ipairs(segments) do
-        if seg.type == "chem" then
-            if FORMAT == "latex" or FORMAT == "beamer" then
-                local c = seg.content
-                    :gsub("%^$",   " ^")   -- trailing bare ^ → mhchem gas arrow (↑)
-                    :gsub("%(^%)", " ^")   -- (^) → mhchem gas arrow (↑)
-                result:insert(pandoc.RawInline("latex", "\\ce{" .. c .. "}"))
-            else
-                result:extend(format_ce((seg.content:gsub("%s+", ""))))
-            end
-
-        elseif seg.type == "sub" then
-            if sub_dict and sub_dict[seg.content] then
-                for _, inline in ipairs(sub_dict[seg.content]) do
-                    result:insert(inline)
-                end
-            else
-                -- Unknown name: restore original placeholder
-                result:insert(pandoc.Str("{" .. seg.content .. "}"))
-            end
-
-        elseif seg.type == "text" and seg.content ~= "" then
-            result:insert(pandoc.Str(seg.content))
-        end
-    end
-
-    return result
-end
-
--- ---------------------------------------------------------------------------
 -- get_sub_dict(meta)
 -- Return the substitution dictionary from document metadata, or nil.
 -- ---------------------------------------------------------------------------
@@ -558,16 +370,70 @@ local function get_sub_dict(meta)
 end
 
 -- ---------------------------------------------------------------------------
+-- process_str(str_elem, sub_dict)
+-- Expand substitution placeholders {name} within a Str element.
+-- Returns a pandoc.List of Inlines, or nil if no placeholders are present.
+-- ---------------------------------------------------------------------------
+local function process_str(str_elem, sub_dict)
+    local s = str_elem.text
+
+    -- Quick exit: no '{' present → no substitution pattern possible
+    if not s:find("{") then return nil end
+
+    local result = pandoc.List()
+    local pos = 1
+    local modified = false
+
+    while pos <= #s do
+        local sub_start, sub_end, sub_name = s:find("%{([^%s%}]+)%}", pos)
+        if not sub_start then
+            result:insert(pandoc.Str(s:sub(pos)))
+            break
+        end
+
+        -- Emit literal text before the match
+        if sub_start > pos then
+            result:insert(pandoc.Str(s:sub(pos, sub_start - 1)))
+        end
+
+        if sub_dict and sub_dict[sub_name] then
+            for _, inline in ipairs(sub_dict[sub_name]) do
+                result:insert(inline)
+            end
+            modified = true
+        else
+            -- Unknown name: restore original placeholder
+            result:insert(pandoc.Str("{" .. sub_name .. "}"))
+        end
+
+        pos = sub_end + 1
+    end
+
+    return modified and result or nil
+end
+
+-- ---------------------------------------------------------------------------
 -- Entry point
 -- ---------------------------------------------------------------------------
 function Pandoc(doc)
     local sub_dict = get_sub_dict(doc.meta)
 
-    -- Pass 1: stitch any multi-token s:{...} spans into single Str elements
-    local stitched = doc:walk { Inlines = stitch_inlines }
+    return doc:walk {
+        Span = function(span)
+            if not span.classes:includes("chem") then return nil end
+            local formula = pandoc.utils.stringify(span.content)
+            if FORMAT == "latex" or FORMAT == "beamer" then
+                local c = formula
+                    :gsub("%^$",   " ^")
+                    :gsub("%(^%)", " ^")
+                return pandoc.RawInline("latex", "\\ce{" .. c .. "}")
+            else
+                return format_ce(formula:gsub("%s+", ""))
+            end
+        end,
 
-    -- Pass 2: expand chem and substitution patterns within each Str
-    return stitched:walk {
-        Str = function(s) return process_str(s, sub_dict) end
+        Str = function(s)
+            return process_str(s, sub_dict)
+        end
     }
 end

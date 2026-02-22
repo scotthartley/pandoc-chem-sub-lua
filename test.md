@@ -11,15 +11,15 @@ substitutions:
 
 ## Simple formulas
 
-Simple formula: s:{CH3OH}
+Simple formula: [CH3OH]{.chem}
 
-With explicit charge: s:{SO4^2-}
+With explicit charge: [SO4^2-]{.chem}
 
-With implicit charge: s:{Na+}
+With implicit charge: [Na+]{.chem}
 
-With implicit negative: s:{CH3O-}
+With implicit negative: [CH3O-]{.chem}
 
-Longer formula: s:{CH3CH2OH}
+Longer formula: [CH3CH2OH]{.chem}
 
 ## Substitutions
 
@@ -33,9 +33,9 @@ Unknown placeholder: {unknown}
 
 ## Mixed content
 
-React s:{H2O} with s:{SO4^2-} to get {water}.
+React [H2O]{.chem} with [SO4^2-]{.chem} to get {water}.
 
-Prefix s:{Na+} and {aspirin} suffix.
+Prefix [Na+]{.chem} and {aspirin} suffix.
 
 ## No-pattern strings
 
@@ -45,54 +45,54 @@ Just a {  } with spaces inside should not match.
 
 ## Reactions
 
-Simple reaction: s:{H2 + Cl2 -> 2 HCl}
+Simple reaction: [H2 + Cl2 -> 2 HCl]{.chem}
 
-Equilibrium: s:{H2O <=> H+ + OH-}
+Equilibrium: [H2O <=> H+ + OH-]{.chem}
 
-Double arrow: s:{A -> B <- C}
+Double arrow: [A -> B <- C]{.chem}
 
-Multi-species: s:{BaSO4 (v) <- Ba^2+ + SO4^2-}
+Multi-species: [BaSO4 (v) <- Ba^2+ + SO4^2-]{.chem}
 
-Isotope reaction: s:{^{14}C + ^{1}H -> ^{15}N}
+Isotope reaction: [^{14}C + ^{1}H -> ^{15}N]{.chem}
 
 ## States of aggregation
 
-Aqueous ion: s:{CrO4^2-(aq)}
+Aqueous ion: [CrO4^2-(aq)]{.chem}
 
-Solid: s:{BaSO4(s)}
+Solid: [BaSO4(s)]{.chem}
 
 ## Brackets
 
-Complex anion: s:{[AgCl2]-}
+Complex anion: [[AgCl2]-]{.chem}
 
 ## Isotopes and explicit groups
 
-Isotope: s:{^{14}_{6}C}
+Isotope: [\^{14}_{6}C]{.chem}
 
-Oxidation state: s:{Fe^{III}}
+Oxidation state: [Fe^{III}]{.chem}
 
-Explicit charge group: s:{SO4^{2-}}
+Explicit charge group: [SO4^{2-}]{.chem}
 
 ## Precipitate and gas markers
 
-Precipitate: s:{BaSO4(v)}
+Precipitate: [BaSO4(v)]{.chem}
 
-Gas: s:{NH3^}
+Gas: [NH3^]{.chem}
 
-Gas alt: s:{NH3(^)}
+Gas alt: [NH3(^)]{.chem}
 
 ## Parenthesised groups
 
-Hydrate: s:{KCr(SO4)2}
+Hydrate: [KCr(SO4)2]{.chem}
 
 ## Centre dots and radicals
 
-Hydrate (centre dot): s:{CuSO4.5H2O}
+Hydrate (centre dot): [CuSO4.5H2O]{.chem}
 
-Hydrate (complex): s:{KCr(SO4)2.12H2O}
+Hydrate (complex): [KCr(SO4)2.12H2O]{.chem}
 
-Methyl radical: s:{CH3^{.}}
+Methyl radical: [CH3^{.}]{.chem}
 
-Hydroxyl radical: s:{^{.}OH}
+Hydroxyl radical: [\^{.}OH]{.chem}
 
-Radical anion: s:{NO^{(2.)-}}
+Radical anion: [NO^{(2.)-}]{.chem}
