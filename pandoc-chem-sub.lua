@@ -215,8 +215,18 @@ local function parse_formula_body(s)
             i = i + 1
 
         elseif c == '-' then
-            -- Trailing charge '-'; normalise to U+2212
-            inlines:insert(pandoc.Superscript({ pandoc.Str(MINUS_SIGN) }))
+            -- Bond if followed by an atom/group; otherwise trailing charge.
+            if s:sub(i + 1, i + 1):match("[%a%[%(]") then
+                -- U+2013 EN DASH flanked by U+2060 WORD JOINERs (no line breaks on either side).
+                inlines:insert(pandoc.Str("\xe2\x81\xa0\xe2\x80\x93\xe2\x81\xa0"))
+            else
+                inlines:insert(pandoc.Superscript({ pandoc.Str(MINUS_SIGN) }))
+            end
+            i = i + 1
+
+        elseif c == '#' then
+            -- Triple bond → U+2261 ≡ + U+2060 WORD JOINER (no break after).
+            inlines:insert(pandoc.Str("\xe2\x89\xa1\xe2\x81\xa0"))
             i = i + 1
 
         elseif c == '.' then
@@ -231,6 +241,11 @@ local function parse_formula_body(s)
             else
                 i = i + 1
             end
+
+        elseif c == '=' then
+            -- Double bond → U+003D = + U+2060 WORD JOINER (no break after).
+            inlines:insert(pandoc.Str("=\xe2\x81\xa0"))
+            i = i + 1
 
         else
             -- Regular character
