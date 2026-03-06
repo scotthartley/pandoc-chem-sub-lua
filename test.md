@@ -85,6 +85,20 @@ Gas alt: [NH3(^)]{.chem}
 
 Hydrate: [KCr(SO4)2]{.chem}
 
+## Explicit bonds
+
+Single bond: [CH3-CH3]{.chem}
+
+Single bond to heteroatom: [CH3-OH]{.chem}
+
+Double bond: [CH2=CH2]{.chem}
+
+Triple bond: [HC#CH]{.chem}
+
+Mixed bonds: [CH2=CH-CH3]{.chem}
+
+Trailing charge (not a bond): [CH3O-]{.chem}
+
 ## Centre dots and radicals
 
 Hydrate (centre dot): [CuSO4.5H2O]{.chem}
