@@ -99,6 +99,48 @@ Mixed bonds: [CH2=CH-CH3]{.chem}
 
 Trailing charge (not a bond): [CH3O-]{.chem}
 
+## Explicit `\bond{}` types
+
+Single bond (symbol): [A\\bond{-}B]{.chem}
+
+Single bond (numeric): [A\\bond{1}B]{.chem}
+
+Double bond (symbol): [A\\bond{=}B]{.chem}
+
+Double bond (numeric): [A\\bond{2}B]{.chem}
+
+Triple bond (symbol): [A\\bond{#}B]{.chem}
+
+Triple bond (numeric): [A\\bond{3}B]{.chem}
+
+Undefined stereochemistry (wavy bond): [A\\bond{\~}B]{.chem}
+
+Single bond, hash/wedge: [A\\bond{\~-}B]{.chem}
+
+Single bond, hash/wedge (reversed): [A\\bond{-\~}B]{.chem}
+
+Double bond, hash/wedge: [A\\bond{\~=}B]{.chem}
+
+Double bond, hash/wedge (reversed): [A\\bond{=\~}B]{.chem}
+
+Double bond, wedge/hash variant 1: [A\\bond{\~-\-}B]{.chem}
+
+Double bond, wedge/hash variant 2: [A\\bond{-\-\~}B]{.chem}
+
+Double bond, wedge/hash variant 3: [A\\bond{-\~-}B]{.chem}
+
+Dotted/hydrogen bond (3 dots): [A\\bond{\.\.\.}B]{.chem}
+
+Dotted/hydrogen bond (4 dots): [A\\bond{\.\.\.\.}B]{.chem}
+
+Arrow bond (forward): [A\\bond{->}B]{.chem}
+
+Arrow bond (backward): [A\\bond{<-}B]{.chem}
+
+Arrow bond within a reaction (tokenizer regression check): [A\\bond{->}B -> C]{.chem}
+
+Unrecognised bond type (graceful fallback): [A\\bond{xyz}B]{.chem}
+
 ## Centre dots and radicals
 
 Hydrate (centre dot): [CuSO4.5H2O]{.chem}

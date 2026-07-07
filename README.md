@@ -109,6 +109,20 @@ Recognised labels: `aq`, `aq,sat`, `s`, `l`, `g`, `cr`, `am`, `vit`.
 | `[NH3^]{.chem}` | NH₃↑ |
 | `[NH3(^)]{.chem}` | NH₃↑ |
 
+### Explicit bonds
+
+Bare `-`, `=`, and `#` between atoms/groups render as single, double, and
+triple bonds. A `-` not followed by an atom/group is treated as a trailing
+charge instead:
+
+| Source | Rendered |
+|---|---|
+| `[CH3-CH3]{.chem}` | CH₃–CH₃ |
+| `[CH2=CH2]{.chem}` | CH₂=CH₂ |
+| `[HC#CH]{.chem}` | HC≡CH |
+| `[CH2=CH-CH3]{.chem}` | CH₂=CH–CH₃ |
+| `[CH3O-]{.chem}` | CH₃O⁻ |
+
 ### Centre dots and hydrates
 
 A `.` is rendered as a middle dot (·, U+00B7). Digits that immediately follow
@@ -137,6 +151,58 @@ Square brackets and nested parentheses are handled recursively:
 |---|---|
 | `[[AgCl2]-]{.chem}` | [AgCl₂]⁻ |
 | `[KCr(SO4)2]{.chem}` | KCr(SO₄)₂ |
+
+### Explicit bonds: `\bond{...}`
+
+mhchem's `\bond{TYPE}` command covers bond types that a bare `-`/`=`/`#`
+character can't express: numeric aliases, undefined-stereochemistry (wavy)
+bonds, hash/wedge stereo combinations, dotted/hydrogen bonds, and in-molecule
+arrow bonds. For LaTeX/Beamer output `\bond{...}` is passed straight through
+to `\ce{}`, giving full mhchem fidelity. For other formats it's approximated
+with Unicode:
+
+| `\bond{...}` | Meaning | Rendered (non-LaTeX) |
+|---|---|---|
+| `-` or `1` | single bond | – |
+| `=` or `2` | double bond | = |
+| `#` or `3` | triple bond | ≡ |
+| `~` | undefined stereochemistry (wavy bond) | ⁓ |
+| `~-`, `-~` | single bond, hash/wedge | ⁓–, –⁓ |
+| `~=`, `=~` | double bond, hash/wedge | ⁓=, =⁓ |
+| `~--`, `--~`, `-~-` | double bond, wedge/hash variants | ⁓––, ––⁓, –⁓– |
+| `...`, `....` | dotted/hydrogen bond (N dots) | ···, ···· |
+| `->`, `<-` | arrow bond (within a species) | →, ← |
+
+Stereo/wedge combinations are rendered by transliterating each character in
+the brace independently and concatenating the results — there isn't a
+distinct glyph for every combination, so some exotic combos can't be drawn
+as faithfully as two stacked bond lines in a chemistry-typesetting system.
+Dotted bonds render as that many repeated middle dots, matching the source
+count.
+
+Unrecognised `TYPE` values are passed through as literal text (e.g.
+`\bond{xyz}` renders as `\bond{xyz}`) rather than causing an error.
+
+#### Markdown-source escaping required
+
+Pandoc's markdown reader mangles raw `\bond{...}` text before the filter
+ever sees it, so the source needs some extra escaping:
+
+1. **Doubled backslash.** A single backslash before a letter becomes a raw
+   TeX node whose content is dropped on every output path. Write `\\bond{...}`
+   (which Pandoc collapses to one literal backslash) instead of `\bond{...}`.
+2. **Escape every `~`.** A bare `~` is Pandoc's subscript-pair delimiter.
+   Two unrelated `\bond{~...}` occurrences later in the same formula can pair
+   up and swallow everything between them. Escape each one as `\~`.
+3. **Escape every `.` in a dotted bond.** Pandoc's `smart` extension turns
+   3+ unescaped periods into an ellipsis character. Escape each one as `\.`.
+4. **Escape at least one hyphen in any adjacent hyphen pair.** Pandoc's
+   `smart` extension converts adjacent unescaped hyphens to en/em dashes.
+   Escape at least one as `\-` (hyphens separated by another character, like
+   the two in `-~-`, don't need it).
+
+For example, `\bond{~--}` must be written in Markdown source as
+`\\bond{\~-\-}`.
 
 ---
 
@@ -207,6 +273,10 @@ React [H2O]{.chem} with [SO4^2-]{.chem} to get {water}.
   as a footnote reference before the filter runs. Write `[\^{14}_{6}C]{.chem}`
   rather than `[^{14}_{6}C]{.chem}`. Formulas starting with `^` that contain
   spaces (such as reaction equations) are unaffected.
+- `\bond{...}` requires specific Markdown-source escaping (doubled backslash,
+  escaped `~`, escaped `.`, escaped adjacent `-`) to survive Pandoc's
+  markdown reader — see [Markdown-source escaping
+  required](#markdown-source-escaping-required).
 
 ---
 

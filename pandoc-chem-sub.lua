@@ -25,6 +25,24 @@ local STATES = {
     ["g"] = true,  ["cr"] = true,     ["am"] = true, ["vit"] = true,
 }
 
+local function arrow_unicode(token)
+    for _, arrow in ipairs(ARROWS) do
+        if arrow.mhchem == token then return arrow.unicode end
+    end
+    return nil
+end
+
+-- Character map for \bond{...} stereo/multiple-bond transliteration.
+local BOND_CHAR_MAP = {
+    ["-"] = "\xe2\x80\x93",  -- U+2013 EN DASH (single bond)
+    ["1"] = "\xe2\x80\x93",
+    ["="] = "=",              -- double bond
+    ["2"] = "=",
+    ["#"] = "\xe2\x89\xa1",  -- U+2261 ≡ (triple bond)
+    ["3"] = "\xe2\x89\xa1",
+    ["~"] = "\xe2\x81\x93",  -- U+2053 ⁓ SWUNG DASH
+}
+
 -- ---------------------------------------------------------------------------
 -- find_closing_brace(s, open_pos)
 -- Returns the position of the '}' that closes the '{' at open_pos, or nil.
@@ -63,6 +81,40 @@ local function parse_group_content(s)
         end
     end
     return inlines
+end
+
+-- ---------------------------------------------------------------------------
+-- format_bond_spec(inner)
+-- Renders the contents of a \bond{...} mhchem command as a Unicode
+-- approximation. Returns a pandoc.Str, or nil for unrecognised input
+-- (caller falls back to emitting the literal text).
+-- ---------------------------------------------------------------------------
+local function format_bond_spec(inner)
+    if inner == "" then return nil end
+
+    if inner:match("^%.%.%.+$") then
+        -- Dotted/hydrogen bond: N periods -> N middle dots.
+        return pandoc.Str("\xe2\x81\xa0" .. ("\xc2\xb7"):rep(#inner) .. "\xe2\x81\xa0")
+    end
+
+    if inner == "->" or inner == "<-" then
+        local uni = arrow_unicode(inner)
+        if uni then
+            return pandoc.Str("\xe2\x81\xa0" .. uni .. "\xe2\x81\xa0")
+        end
+    end
+
+    if inner:match("^[%-=#123~]+$") then
+        -- Stereo/multiple-bond transliteration, character by character.
+        local out = {}
+        for k = 1, #inner do
+            local ch = inner:sub(k, k)
+            out[#out + 1] = BOND_CHAR_MAP[ch] or ch
+        end
+        return pandoc.Str("\xe2\x81\xa0" .. table.concat(out) .. "\xe2\x81\xa0")
+    end
+
+    return nil
 end
 
 -- ---------------------------------------------------------------------------
@@ -247,6 +299,23 @@ local function parse_formula_body(s)
             inlines:insert(pandoc.Str("=\xe2\x81\xa0"))
             i = i + 1
 
+        elseif c == '\\' then
+            if s:sub(i, i + 5) == "\\bond{" then
+                local close = find_closing_brace(s, i + 5)  -- '{' is at i+5
+                if close then
+                    local inner = s:sub(i + 6, close - 1)
+                    local rendered = format_bond_spec(inner)
+                    inlines:insert(rendered or pandoc.Str(s:sub(i, close)))
+                    i = close + 1
+                else
+                    inlines:insert(pandoc.Str(c))
+                    i = i + 1
+                end
+            else
+                inlines:insert(pandoc.Str(c))
+                i = i + 1
+            end
+
         else
             -- Regular character
             inlines:insert(pandoc.Str(c))
@@ -308,16 +377,28 @@ local function tokenize_ce(s)
     while i <= #s do
         local advanced = false
 
-        -- Try arrows (longest first)
-        for _, arrow in ipairs(ARROWS) do
-            local len = #arrow.mhchem
-            if s:sub(i, i + len - 1) == arrow.mhchem then
-                flush_species(i)
-                table.insert(tokens, { type = "arrow", content = arrow.unicode })
-                i = i + len
-                species_start = i
+        -- \bond{...} is opaque to reaction-level tokenizing: its contents
+        -- (e.g. "->", "<-") must not be mistaken for reaction arrows.
+        if s:sub(i, i + 5) == "\\bond{" then
+            local close = find_closing_brace(s, i + 5)
+            if close then
+                i = close + 1
                 advanced = true
-                break
+            end
+        end
+
+        -- Try arrows (longest first)
+        if not advanced then
+            for _, arrow in ipairs(ARROWS) do
+                local len = #arrow.mhchem
+                if s:sub(i, i + len - 1) == arrow.mhchem then
+                    flush_species(i)
+                    table.insert(tokens, { type = "arrow", content = arrow.unicode })
+                    i = i + len
+                    species_start = i
+                    advanced = true
+                    break
+                end
             end
         end
 
