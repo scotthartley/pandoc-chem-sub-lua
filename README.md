@@ -152,6 +152,20 @@ Square brackets and nested parentheses are handled recursively:
 | `[[AgCl2]-]{.chem}` | [AgCl₂]⁻ |
 | `[KCr(SO4)2]{.chem}` | KCr(SO₄)₂ |
 
+### Bold and italic labels
+
+Text marked `**bold**` or `*italic*` inside a chem span is treated as an
+opaque label, the equivalent of mhchem's `$...$` escape. It is kept as-is
+(no subscripting of digits) and keeps its formatting in every output format.
+For LaTeX/Beamer it is emitted as `$\textbf{...}$` / `$\emph{...}$` inside
+`\ce{}`.
+
+| Source | Rendered (non-LaTeX) | LaTeX |
+|---|---|---|
+| `[**mmAn** + **ppAn** <=> 2**pmAn**]{.chem}` | **mmAn** + **ppAn** ⇌ 2 **pmAn** | `\ce{$\textbf{mmAn}$ + $\textbf{ppAn}$ <=> 2$\textbf{pmAn}$}` |
+| `[**L1**H2 + 2OH- -> **L1**^2- + 2H2O]{.chem}` | **L1**H₂ + 2 OH⁻ → **L1**²⁻ + 2 H₂O | `\ce{$\textbf{L1}$H2 + 2OH- -> $\textbf{L1}$^2- + 2H2O}` |
+| `[*cis*-[PtCl2(NH3)2]]{.chem}` | *cis*–[PtCl₂(NH₃)₂] | `\ce{$\emph{cis}$-[PtCl2(NH3)2]}` |
+
 ### Explicit bonds: `\bond{...}`
 
 mhchem's `\bond{TYPE}` command covers bond types that a bare `-`/`=`/`#`

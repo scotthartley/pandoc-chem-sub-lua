@@ -25,6 +25,13 @@ local STATES = {
     ["g"] = true,  ["cr"] = true,     ["am"] = true, ["vit"] = true,
 }
 
+-- Strong/Emph elements found at the top level of a chem span are lifted out
+-- before stringifying and replaced by a placeholder "\1<n>\2". They are
+-- treated as opaque labels (the equivalent of mhchem's $...$ escape) and
+-- restored verbatim when the formula is rendered.
+local PH_OPEN, PH_CLOSE = "\1", "\2"
+local formatted = {}
+
 local function arrow_unicode(token)
     for _, arrow in ipairs(ARROWS) do
         if arrow.mhchem == token then return arrow.unicode end
@@ -127,7 +134,13 @@ local function parse_formula_body(s)
     while i <= #s do
         local c = s:sub(i, i)
 
-        if c == '^' then
+        if c == PH_OPEN and s:find(PH_CLOSE, i + 1, true) then
+            -- Bold/italic label: restore the original element untouched
+            local close = s:find(PH_CLOSE, i + 1, true)
+            inlines:insert(formatted[tonumber(s:sub(i + 1, close - 1))])
+            i = close + 1
+
+        elseif c == '^' then
             local next_c = s:sub(i + 1, i + 1)
 
             if next_c == '{' then
@@ -268,7 +281,7 @@ local function parse_formula_body(s)
 
         elseif c == '-' then
             -- Bond if followed by an atom/group; otherwise trailing charge.
-            if s:sub(i + 1, i + 1):match("[%a%[%(]") then
+            if s:sub(i + 1, i + 1):match("[%a%[%(\1]") then
                 -- U+2013 EN DASH flanked by U+2060 WORD JOINERs (no line breaks on either side).
                 inlines:insert(pandoc.Str("\xe2\x81\xa0\xe2\x80\x93\xe2\x81\xa0"))
             else
@@ -334,7 +347,7 @@ local function format_species(s)
 
     -- Leading coefficient: digits with optional decimal/fraction  e.g. 2, 1/2, 2.5
     -- Second capture starts at the first element symbol, bracket, or modifier (^, _, ().
-    local coeff, rest = s:match("^(%d+[%.%/]?%d*)([%a%[%^%_%(].*)")
+    local coeff, rest = s:match("^(%d+[%.%/]?%d*)([%a%[%^%_%(\1].*)")
     if not coeff then
         -- Entire string is a bare number (rare but handle it)
         coeff = s:match("^(%d+)$")
@@ -406,7 +419,7 @@ local function tokenize_ce(s)
             -- Operator '+': only when the character after it starts a new species
             if s:sub(i, i) == '+' then
                 local next_c = s:sub(i + 1, i + 1)
-                if next_c:match("[%a%d%[%^]") then
+                if next_c:match("[%a%d%[%^\1]") then
                     flush_species(i)
                     table.insert(tokens, { type = "operator", content = "+" })
                     i = i + 1
@@ -517,11 +530,25 @@ function Pandoc(doc)
     return doc:walk {
         Span = function(span)
             if not span.classes:includes("chem") then return nil end
-            local formula = pandoc.utils.stringify(span.content)
+            formatted = {}
+            local content = span.content:map(function(el)
+                if el.t == "Strong" or el.t == "Emph" then
+                    formatted[#formatted + 1] = el
+                    return pandoc.Str(PH_OPEN .. #formatted .. PH_CLOSE)
+                end
+                return el
+            end)
+            local formula = pandoc.utils.stringify(content)
             if FORMAT == "latex" or FORMAT == "beamer" then
                 local c = formula
                     :gsub("%^$",   " ^")
                     :gsub("%(^%)", " ^")
+                    :gsub("\1(%d+)\2", function(n)
+                        local tex = pandoc.write(
+                            pandoc.Pandoc({ pandoc.Plain({ formatted[tonumber(n)] }) }),
+                            "latex")
+                        return "$" .. tex:gsub("%s+$", "") .. "$"
+                    end)
                 return pandoc.RawInline("latex", "\\ce{" .. c .. "}")
             else
                 return format_ce(formula:gsub("%s+", ""))

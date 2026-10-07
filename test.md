@@ -152,3 +152,11 @@ Methyl radical: [CH3^{.}]{.chem}
 Hydroxyl radical: [\^{.}OH]{.chem}
 
 Radical anion: [NO^{(2.)-}]{.chem}
+
+## Bold and italic labels
+
+Bold compound labels: [**mmAn** + **ppAn** <=> 2**pmAn**]{.chem}
+
+Bold label with charge: [**L1**H2 + 2OH- -> **L1**^2- + 2H2O]{.chem}
+
+Italic prefix: [*cis*-[PtCl2(NH3)2]]{.chem}
