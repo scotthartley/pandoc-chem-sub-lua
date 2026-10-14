@@ -35,6 +35,8 @@ Span content
   → parse_formula_body() recursive character-level renderer
 ```
 
+**Arrow labels** (`->[above][below]`): before the whitespace strip, `protect_label_spaces()` turns whitespace inside label brackets into the `LABEL_SPACE` sentinel (`\3`). `tokenize_ce()` stores the labels as `tok.above`/`tok.below`; `format_ce()` then emits a `pandoc.Math` element `\underset{below}{\overset{above}{arrow}}`. `label_to_tex()` renders each label word with `format_ce()` and converts the inlines to TeX via `inlines_to_tex()` (Str → `\text{}`, sub/sup → `_{}`/`^{}`, Math/RawInline verbatim, Strong/Emph → `\mathbf{\textbf{}}`/`\mathit{\textit{}}`). Unlabelled arrows remain plain `Str`.
+
 `parse_formula_body` handles: `^{}`/`_{}` explicit groups, `^sign` charge shorthand, `[...]` square brackets (recursive), `(...)` parentheses (states of aggregation, precipitate/gas markers, polymer subscripts, or recursive), digits→Subscript, `.`→middle dot, `+`/`-`→Superscript.
 
 ### Substitution pipeline

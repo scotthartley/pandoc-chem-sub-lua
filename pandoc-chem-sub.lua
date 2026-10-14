@@ -70,6 +70,63 @@ local function find_closing_brace(s, open_pos)
     return nil  -- unmatched
 end
 
+-- Whitespace inside arrow labels survives the whitespace strip as this sentinel.
+local LABEL_SPACE = "\3"
+
+-- ---------------------------------------------------------------------------
+-- find_closing_bracket(s, open_pos)
+-- Returns the position of the ']' that closes the '[' at open_pos, or nil.
+-- ---------------------------------------------------------------------------
+local function find_closing_bracket(s, open_pos)
+    local depth = 1
+    for i = open_pos + 1, #s do
+        local c = s:sub(i, i)
+        if     c == '[' then depth = depth + 1
+        elseif c == ']' then
+            depth = depth - 1
+            if depth == 0 then return i end
+        end
+    end
+    return nil  -- unmatched
+end
+
+-- ---------------------------------------------------------------------------
+-- protect_label_spaces(s)
+-- Replaces whitespace inside the (up to two) [...] label groups directly
+-- following an arrow with LABEL_SPACE, so that "->[50 °C]" keeps its space
+-- when the rest of the formula is stripped of whitespace.
+-- ---------------------------------------------------------------------------
+local function protect_label_spaces(s)
+    local out = {}
+    local i = 1
+    while i <= #s do
+        local matched = nil
+        for _, arrow in ipairs(ARROWS) do
+            if s:sub(i, i + #arrow.mhchem - 1) == arrow.mhchem then
+                matched = arrow.mhchem
+                break
+            end
+        end
+        if matched then
+            out[#out + 1] = matched
+            i = i + #matched
+            for _ = 1, 2 do
+                if s:sub(i, i) ~= '[' then break end
+                local close = find_closing_bracket(s, i)
+                if not close then break end
+                local label = s:sub(i + 1, close - 1)
+                    :gsub("^%s+", ""):gsub("%s+$", ""):gsub("%s+", LABEL_SPACE)
+                out[#out + 1] = "[" .. label .. "]"
+                i = close + 1
+            end
+        else
+            out[#out + 1] = s:sub(i, i)
+            i = i + 1
+        end
+    end
+    return table.concat(out)
+end
+
 -- ---------------------------------------------------------------------------
 -- parse_group_content(s)
 -- Simple renderer for content inside explicit ^{...} or _{...} groups.
@@ -78,8 +135,7 @@ end
 -- ---------------------------------------------------------------------------
 local function parse_group_content(s)
     local inlines = pandoc.List()
-    for i = 1, #s do
-        local c = s:sub(i, i)
+    for c in s:gmatch("[\x00-\x7f\xc0-\xf7][\x80-\xbf]*") do
         if c == '-' then
             inlines:insert(pandoc.Str(MINUS_SIGN))
         elseif c == '.' then
@@ -331,9 +387,10 @@ local function parse_formula_body(s)
             end
 
         else
-            -- Regular character
-            inlines:insert(pandoc.Str(c))
-            i = i + 1
+            -- Regular character (a whole UTF-8 sequence, not a single byte)
+            local ch = s:match("^[\xc0-\xf7][\x80-\xbf]*", i) or c
+            inlines:insert(pandoc.Str(ch))
+            i = i + #ch
         end
     end
     return inlines
@@ -407,8 +464,17 @@ local function tokenize_ce(s)
                 local len = #arrow.mhchem
                 if s:sub(i, i + len - 1) == arrow.mhchem then
                     flush_species(i)
-                    table.insert(tokens, { type = "arrow", content = arrow.unicode })
+                    local tok = { type = "arrow", content = arrow.unicode }
                     i = i + len
+                    -- Optional [above][below] labels directly after the arrow
+                    for _, key in ipairs({ "above", "below" }) do
+                        if s:sub(i, i) ~= '[' then break end
+                        local close = find_closing_bracket(s, i)
+                        if not close then break end
+                        tok[key] = s:sub(i + 1, close - 1)
+                        i = close + 1
+                    end
+                    table.insert(tokens, tok)
                     species_start = i
                     advanced = true
                     break
@@ -443,6 +509,8 @@ end
 -- format_ce(content)
 -- Top-level formatter for a chem segment (non-LaTeX path).
 -- ---------------------------------------------------------------------------
+local label_to_tex  -- forward declaration (mutually recursive with format_ce)
+
 local function format_ce(content)
     local inlines = pandoc.List()
     local tokens  = tokenize_ce(content)
@@ -450,7 +518,18 @@ local function format_ce(content)
     for _, tok in ipairs(tokens) do
         if tok.type == "arrow" then
             inlines:insert(pandoc.Space())
-            inlines:insert(pandoc.Str(tok.content))
+            if tok.above then
+                -- Labelled arrow: stacked labels via a Math element, which
+                -- pandoc renders as MathML (HTML/ODT/EPUB) or OMML (DOCX).
+                local tex = "\\overset{" .. label_to_tex(tok.above) .. "}{"
+                    .. tok.content .. "}"
+                if tok.below then
+                    tex = "\\underset{" .. label_to_tex(tok.below) .. "}{" .. tex .. "}"
+                end
+                inlines:insert(pandoc.Math("InlineMath", tex))
+            else
+                inlines:insert(pandoc.Str(tok.content))
+            end
             inlines:insert(pandoc.Space())
 
         elseif tok.type == "operator" then
@@ -464,6 +543,69 @@ local function format_ce(content)
     end
 
     return inlines
+end
+
+-- ---------------------------------------------------------------------------
+-- inlines_to_tex(inlines, textcmd)
+-- Converts rendered label inlines to TeX math. Plain text goes inside
+-- textcmd (\text, or \textbf/\textit within bold/italic labels).
+-- ---------------------------------------------------------------------------
+local TEX_ESCAPES = {
+    ["\\"] = "\\textbackslash{}", ["{"] = "\\{", ["}"] = "\\}",
+    ["#"] = "\\#", ["$"] = "\\$", ["%"] = "\\%", ["&"] = "\\&",
+    ["_"] = "\\_", ["^"] = "\\textasciicircum{}", ["~"] = "\\textasciitilde{}",
+}
+
+local function inlines_to_tex(inlines, textcmd)
+    local out = {}
+    local text = {}  -- run of consecutive Str text, emitted as one textcmd{...}
+
+    local function flush_text()
+        if #text > 0 then
+            local t = table.concat(text):gsub("[\\{}#$%%&_^~]", TEX_ESCAPES)
+            out[#out + 1] = textcmd .. "{" .. t .. "}"
+            text = {}
+        end
+    end
+
+    for _, el in ipairs(inlines) do
+        if el.t == "Str" then
+            text[#text + 1] = el.text
+        else
+            flush_text()
+            if el.t == "Space" then
+                out[#out + 1] = "\\ "
+            elseif el.t == "Subscript" then
+                out[#out + 1] = "_{" .. inlines_to_tex(el.content, textcmd) .. "}"
+            elseif el.t == "Superscript" then
+                out[#out + 1] = "^{" .. inlines_to_tex(el.content, textcmd) .. "}"
+            elseif el.t == "Math" or el.t == "RawInline" then
+                out[#out + 1] = "{" .. el.text .. "}"
+            elseif el.t == "Strong" then
+                out[#out + 1] = "\\mathbf{" .. inlines_to_tex(el.content, "\\textbf") .. "}"
+            elseif el.t == "Emph" then
+                out[#out + 1] = "\\mathit{" .. inlines_to_tex(el.content, "\\textit") .. "}"
+            else
+                text[#text + 1] = pandoc.utils.stringify(el)
+            end
+        end
+    end
+    flush_text()
+    return table.concat(out)
+end
+
+-- ---------------------------------------------------------------------------
+-- label_to_tex(label)
+-- Renders an arrow label as \ce content (as mhchem does), then as TeX math.
+-- Words are formatted separately so "50 °C" keeps 50 as a plain number.
+-- ---------------------------------------------------------------------------
+function label_to_tex(label)
+    local inlines = pandoc.List()
+    for word in label:gmatch("[^" .. LABEL_SPACE .. "]+") do
+        if #inlines > 0 then inlines:insert(pandoc.Space()) end
+        inlines:extend(format_ce(word))
+    end
+    return inlines_to_tex(inlines, "\\text")
 end
 
 -- ---------------------------------------------------------------------------
@@ -559,7 +701,7 @@ function Pandoc(doc)
                     end)
                 return pandoc.RawInline("latex", "\\ce{" .. c .. "}")
             else
-                return format_ce(formula:gsub("%s+", ""))
+                return format_ce((protect_label_spaces(formula):gsub("%s+", "")))
             end
         end,
 

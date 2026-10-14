@@ -166,3 +166,13 @@ Italic prefix: [*cis*-[PtCl2(NH3)2]]{.chem}
 Math arrow label: [A <=>[$x$] B <=> C]{.chem}
 
 Raw TeX: [A ->[\Delta{}] B + \alpha{}]{.chem}
+
+## Arrow labels
+
+Formula label: [A ->[H2O] B]{.chem}
+
+Above and below: [A <=>[$x$][50 °C] B]{.chem}
+
+Raw TeX label: [A ->[\Delta{}] B]{.chem}
+
+Italic label: [A ->[*cat.*] B]{.chem}

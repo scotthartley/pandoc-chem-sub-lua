@@ -89,6 +89,20 @@ Supported arrow tokens (mhchem notation):
 | `<=>>` | ⇒ |
 | `<<=>` | ⇐ |
 
+Arrows can carry labels above and (optionally) below, as in mhchem:
+`->[above][below]`. Labels are formatted as chemical formulas and may contain
+spaces, `$math$`, raw TeX, or bold/italic text. For LaTeX/Beamer output they are
+passed through to `\ce{}`; for other formats the labelled arrow is emitted as an
+inline math element (`\underset{below}{\overset{above}{→}}`), which Pandoc
+renders as MathML in HTML/EPUB/ODT and as a native equation in DOCX. The arrow
+does not stretch to fit long labels in non-LaTeX output.
+
+| Source | Rendered |
+|---|---|
+| `[A ->[H2O] B]{.chem}` | A →(H₂O above) B |
+| `[A <=>[$x$][50 °C] B]{.chem}` | A ⇌(*x* above, 50 °C below) B |
+| `[A ->[*cat.*] B]{.chem}` | A →(*cat.* above) B |
+
 ### States of aggregation
 
 Write the state label inside parentheses immediately after the formula:
