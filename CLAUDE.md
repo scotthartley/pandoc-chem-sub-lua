@@ -44,5 +44,5 @@ Span content
 ## Key constraints
 
 - **Leading `^` in spans**: `[^...]` without spaces is parsed by Pandoc as a footnote reference before the filter runs. Escape as `[\^...]{.chem}`. Spaced reactions like `[^{14}C + ... ]{.chem}` are unaffected.
-- **LaTeX path**: formula content is passed verbatim to `\ce{}` with only two fixups: bare `^$` and `(^)` are normalised to ` ^` (mhchem gas marker syntax).
+- **LaTeX path**: formula content is passed verbatim to `\ce{}` with only two fixups: bare `^$` and `(^)` are normalised to ` ^` (mhchem gas marker syntax). Math (`$x$`) and raw TeX (`\alpha{}`), which Pandoc parses before the filter runs, are lifted out as placeholders (like Strong/Emph) and restored verbatim as `$x$` / `\alpha{}`.
 - **`format_species` coefficient pattern**: `^(%d+[%.%/]?%d*)([%a%[%^%_%(].*)` — requires the remainder to start with a letter, `[`, `^`, `_`, or `(` to avoid treating bare numbers as coefficients.

@@ -25,10 +25,11 @@ local STATES = {
     ["g"] = true,  ["cr"] = true,     ["am"] = true, ["vit"] = true,
 }
 
--- Strong/Emph elements found at the top level of a chem span are lifted out
--- before stringifying and replaced by a placeholder "\1<n>\2". They are
--- treated as opaque labels (the equivalent of mhchem's $...$ escape) and
--- restored verbatim when the formula is rendered.
+-- Strong/Emph, Math and raw TeX elements found at the top level of a chem span
+-- are lifted out before stringifying (which would drop or mangle them) and
+-- replaced by a placeholder "\1<n>\2". They are treated as opaque labels (the
+-- equivalent of mhchem's $...$ escape) and restored verbatim when the formula
+-- is rendered: Math as $...$, raw TeX as-is, Strong/Emph via the LaTeX writer.
 local PH_OPEN, PH_CLOSE = "\1", "\2"
 local formatted = {}
 
@@ -532,7 +533,9 @@ function Pandoc(doc)
             if not span.classes:includes("chem") then return nil end
             formatted = {}
             local content = span.content:map(function(el)
-                if el.t == "Strong" or el.t == "Emph" then
+                if el.t == "Strong" or el.t == "Emph" or el.t == "Math"
+                    or (el.t == "RawInline"
+                        and (el.format == "tex" or el.format == "latex")) then
                     formatted[#formatted + 1] = el
                     return pandoc.Str(PH_OPEN .. #formatted .. PH_CLOSE)
                 end
@@ -544,9 +547,14 @@ function Pandoc(doc)
                     :gsub("%^$",   " ^")
                     :gsub("%(^%)", " ^")
                     :gsub("\1(%d+)\2", function(n)
+                        local el = formatted[tonumber(n)]
+                        if el.t == "Math" then
+                            return "$" .. el.text .. "$"
+                        elseif el.t == "RawInline" then
+                            return el.text
+                        end
                         local tex = pandoc.write(
-                            pandoc.Pandoc({ pandoc.Plain({ formatted[tonumber(n)] }) }),
-                            "latex")
+                            pandoc.Pandoc({ pandoc.Plain({ el }) }), "latex")
                         return "$" .. tex:gsub("%s+$", "") .. "$"
                     end)
                 return pandoc.RawInline("latex", "\\ce{" .. c .. "}")
