@@ -133,6 +133,10 @@ Dotted/hydrogen bond (3 dots): [A\\bond{\.\.\.}B]{.chem}
 
 Dotted/hydrogen bond (4 dots): [A\\bond{\.\.\.\.}B]{.chem}
 
+Dotted bond, unescaped (3 dots): [A\\bond{...}B]{.chem}
+
+Dotted bond, unescaped (4 dots): [A\\bond{....}B]{.chem}
+
 Arrow bond (forward): [A\\bond{->}B]{.chem}
 
 Arrow bond (backward): [A\\bond{<-}B]{.chem}

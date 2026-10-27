@@ -684,6 +684,11 @@ function Pandoc(doc)
                 return el
             end)
             local formula = pandoc.utils.stringify(content)
+            -- Undo smart-punctuation ellipses inside \bond{} so dotted
+            -- bonds can be written as \bond{...} without escaping.
+            formula = formula:gsub("\\bond(%b{})", function(b)
+                return "\\bond" .. (b:gsub("\xe2\x80\xa6", "..."))
+            end)
             if FORMAT == "latex" or FORMAT == "beamer" then
                 local c = formula
                     :gsub("%^$",   " ^")

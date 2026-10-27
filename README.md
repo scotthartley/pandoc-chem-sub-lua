@@ -222,15 +222,18 @@ ever sees it, so the source needs some extra escaping:
 2. **Escape every `~`.** A bare `~` is Pandoc's subscript-pair delimiter.
    Two unrelated `\bond{~...}` occurrences later in the same formula can pair
    up and swallow everything between them. Escape each one as `\~`.
-3. **Escape every `.` in a dotted bond.** Pandoc's `smart` extension turns
-   3+ unescaped periods into an ellipsis character. Escape each one as `\.`.
-4. **Escape at least one hyphen in any adjacent hyphen pair.** Pandoc's
+3. **Escape at least one hyphen in any adjacent hyphen pair.** Pandoc's
    `smart` extension converts adjacent unescaped hyphens to en/em dashes.
    Escape at least one as `\-` (hyphens separated by another character, like
    the two in `-~-`, don't need it).
 
 For example, `\bond{~--}` must be written in Markdown source as
 `\\bond{\~-\-}`.
+
+Dotted bonds need no extra escaping: the filter converts the ellipsis
+character that Pandoc's `smart` extension produces back into periods inside
+`\bond{}`, so `\\bond{...}` and `\\bond{....}` work as written (escaped
+`\.` periods also still work).
 
 ---
 
